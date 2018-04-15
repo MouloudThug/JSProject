@@ -22,11 +22,11 @@
             <div id='control'>
                 <button id='play' title='play'
                         onclick='playPause();'>Play</button>
-                <progress id='progressBar' min='0' max='100' value='0'>0% joué</progress>
-                <button id='upVolume' class='volume-plus' title='increase volume'
-                        onclick='changeVolume("+");'>+</button>
-                <button id='downVolum' class='volume-minus'
+                <progress id='progressBar' max='100' value='0'></progress>
+                <button id='downVolum'
                         onclick='changeVolume("-");'>-</button>
+                <button id='upVolume'
+                        onclick='changeVolume("+");'>+</button>
             </div>
         </section>
         <section class="pod">
@@ -94,8 +94,8 @@
     }
 
     function changeVolume(direction) {
-        if (direction === '+') player.volume += player.volume == 1 ? 0 : 0.1;
-        else player.volume -= (player.volume == 0 ? 0 : 0.1);
+        if (direction === '+') player.volume += player.volume === 1 ? 0 : 0.1;
+        else player.volume -= (player.volume === 0 ? 0 : 0.1);
         player.volume = parseFloat(player.volume).toFixed(1);
     }
 
@@ -235,6 +235,11 @@
         player.appendChild(source);
         player.load();
         playPause();
+
+        var temp = playlist[this.value];
+        playlist[this.value] = playlist[0];
+        playlist[0] = temp;
+        showPlayList();
     }
 
 
