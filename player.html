@@ -1,15 +1,247 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css" />
     <title>Player</title>
 </head>
 <body>
-    <video width="1400">
-
-    </video>
+    <header>
+        <p>Entrer l'url des podcasts :</p>
+        <input type="text" id="url" value="http://rss.cnn.com/services/podcasting/studentnews/rss.xml"/>
+        <button onclick="addURL()">Charger</button>
+        <button onclick="viderList()">Clear</button>
+    </header>
+    <div class="container">
+        <section class="pod">
+            <h1>Tous les podcasts</h1>
+            <div id="podcasts"></div>
+        </section>
+        <section class="vid">
+            <video id="player"></video>
+            <div id='control'>
+                <button id='play' title='play'
+                        onclick='playPause();'>Play</button>
+                <progress id='progressBar' min='0' max='100' value='0'>0% joué</progress>
+                <button id='upVolume' class='volume-plus' title='increase volume'
+                        onclick='changeVolume("+");'>+</button>
+                <button id='downVolum' class='volume-minus'
+                        onclick='changeVolume("-");'>-</button>
+            </div>
+        </section>
+        <section class="pod">
+            <h1>PlayList</h1>
+            <div id="playlist"></div>
+        </section>
+    </div>
 </body>
 <script>
-    
+
+    var player;
+    var items = [];
+    var playlist = [];
+
+    window.addEventListener("load", function() {
+        player = document.getElementById("player");
+        player.ontimeupdate = updateBar;
+        player.addEventListener("ended", function() {
+            playlist.splice(0,1);
+            if(playlist.length >= 2) {
+                player.innerHTML = "";
+                var source = document.createElement("source");
+                source.src = playlist[0].getElementsByTagName("link")[0].textContent;
+                source.type = "video/mp4";
+                player.appendChild(source);
+                player.load();
+                playPause();
+            }
+            showPlayList();
+        });
+        document.getElementById("progressBar").onclick = function(e) {
+            var rect = document.getElementById("progressBar").getBoundingClientRect();
+            player.currentTime = player.duration * ((e.pageX - rect.left) / (rect.right - rect.left));
+        };
+    });
+
+    function updateBar() {
+        var progressBar = document.getElementById('progressBar');
+        var percentage = Math.floor((100 / player.duration) *
+            player.currentTime);
+        if(!isNaN(percentage)) {
+            progressBar.value = percentage;
+            progressBar.innerHTML = percentage + '% played';
+        }
+    }
+
+    function addURL() {
+        var url = "https://cors-anywhere.herokuapp.com/" + document.getElementById("url").value;
+        var data = new XMLHttpRequest();
+        data.open('GET', url, true);
+        data.responseType = 'document';
+        data.overrideMimeType('text/xml');
+
+        data.onload = function () {
+            if (data.readyState === data.DONE) {
+                if (data.status === 200) {
+                    var doc = data.responseXML;
+                    var temp = doc.getElementsByTagName("channel")[0].getElementsByTagName("item");
+                    for(var i = 0; i < temp.length; i++) items.push(temp[i]);
+                }
+            }
+            showAllPodcast();
+        };
+        data.send(null);
+    }
+
+    function changeVolume(direction) {
+        if (direction === '+') player.volume += player.volume == 1 ? 0 : 0.1;
+        else player.volume -= (player.volume == 0 ? 0 : 0.1);
+        player.volume = parseFloat(player.volume).toFixed(1);
+    }
+
+    function playPause() {
+        var bouton = document.getElementById("play");
+        if(player.paused || player.ended) {
+            bouton.title = "pause";
+            player.play();
+            bouton.textContent = "pause";
+        } else {
+            bouton.textContent = "play";
+            bouton.title = "play";
+            player.pause();
+        }
+    }
+
+    function showAllPodcast() {
+        var div = document.getElementById("podcasts");
+        div.innerHTML = "";
+        for(var i = 0; i < items.length; i++) {
+            var add = document.createElement("button");
+            add.textContent = "add";
+            add.value = i;
+            add.onclick = addToPlaylist;
+            add.className = "podButton";
+            div.appendChild(add);
+            var title = document.createElement("span");
+            title.textContent = items[i].getElementsByTagName("title")[0].textContent;
+            div.appendChild(title);
+            div.appendChild(document.createElement("br"));
+        }
+    }
+
+    function addToPlaylist() {
+        playlist.push(items[this.value]);
+        showPlayList();
+    }
+
+    function showPlayList() {
+        var div1 = document.getElementById("playlist");
+        div1.innerHTML = "";
+        for(var i = 0; i < playlist.length; i++) {
+            var div = document.createElement("div");
+            if(playlist.length === 1) {
+                player.innerHTML = "";
+                var source = document.createElement("source");
+                source.src = playlist[i].getElementsByTagName("link")[0].textContent;
+                source.type = "video/mp4";
+                player.appendChild(source);
+                player.load();
+                playPause();
+            }
+            var buttons = document.createElement("span");
+            buttons.className = "playButton";
+            if(i > 0) {
+                var up = document.createElement("button");
+                up.textContent = "▲";
+                up.value = i;
+                up.onclick = moveUp;
+                buttons.appendChild(up);
+            }
+            if(i < playlist.length -1) {
+                var down = document.createElement("button");
+                down.textContent = "▼";
+                down.value = i;
+                down.onclick = moveDown;
+                buttons.appendChild(down);
+            }
+            var title = document.createElement("span");
+            title.textContent = playlist[i].getElementsByTagName("title")[0].textContent;
+            title.className = "clickable";
+            title.value = i;
+            title.onclick = videoClicked;
+            div.appendChild(buttons);
+            div.appendChild(title);
+            var del = document.createElement("button");
+            del.textContent = "X";
+            del.value = i;
+            del.onclick = delet;
+            div.appendChild(del);
+            div.className = "playDiv";
+            div1.appendChild(div);
+        }
+    }
+
+    function moveUp() {
+        if(this.value === "1") {
+            player.innerHTML = "";
+            var source = document.createElement("source");
+            source.src = playlist[this.value].getElementsByTagName("link")[0].textContent;
+            source.type = "video/mp4";
+            player.appendChild(source);
+            player.load();
+            playPause();
+        }
+        var temp = playlist[this.value];
+        playlist[this.value] = playlist[this.value -1];
+        playlist[this.value - 1] = temp;
+        showPlayList();
+    }
+
+    function delet() {
+        if(this.value === "0") {
+            player.innerHTML = "";
+            var source = document.createElement("source");
+            source.src = playlist[1].getElementsByTagName("link")[0].textContent;
+            source.type = "video/mp4";
+            player.appendChild(source);
+            player.load();
+            playPause();
+        }
+        playlist.splice(this.value, 1);
+        showPlayList();
+    }
+
+    function moveDown() {
+        if(this.value === "0") {
+            player.innerHTML = "";
+            var source = document.createElement("source");
+            source.src = playlist[1].getElementsByTagName("link")[0].textContent;
+            source.type = "video/mp4";
+            player.appendChild(source);
+            player.load();
+            playPause();
+        }
+        var temp = playlist[this.value];
+        playlist[this.value] = playlist[parseInt(this.value) + 1];
+        playlist[parseInt(this.value) + 1] = temp;
+        showPlayList();
+    }
+
+    function videoClicked() {
+        player.innerHTML = "";
+        var source = document.createElement("source");
+        source.src = playlist[this.value].getElementsByTagName("link")[0].textContent;
+        source.type = "video/mp4";
+        player.appendChild(source);
+        player.load();
+        playPause();
+    }
+
+
+    function viderList() {
+        items = [];
+        showAllPodcast();
+    }
+
 </script>
 </html>
